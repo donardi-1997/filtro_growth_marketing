@@ -35,4 +35,7 @@ PALETTE = {
 }
 
 
+UI_TABS = ("Resumen ejecutivo", "Ranking de candidatos", "Top 10")
+
+
 WINDOW_TITLE = f'{BRAND["company"]} {BRAND["product"]} - {BRAND["role"]}'
