@@ -1,1 +1,0 @@
-Dashboard feature is currently in RED phase: tests require growth_ranker.dashboard before implementation.
