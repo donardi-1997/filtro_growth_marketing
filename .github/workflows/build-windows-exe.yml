@@ -20,6 +20,11 @@ jobs:
         run: python -m pip install -r requirements-build.txt
       - name: Run tests
         run: python -m pytest -q
+      - name: Compile Python modules
+        shell: pwsh
+        run: |
+          $files = @('marketing_cv_ranker.py') + (Get-ChildItem growth_ranker -Filter *.py | ForEach-Object { $_.FullName })
+          python -m py_compile $files
       - name: Build executable
         run: python -m PyInstaller --noconfirm --clean RankingMarketing.spec
       - name: Upload executable
