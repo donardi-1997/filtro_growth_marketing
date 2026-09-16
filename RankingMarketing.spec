@@ -5,11 +5,13 @@ binaries = []
 datas = []
 hiddenimports = []
 
-for package in ("docx", "openpyxl"):
+for package in ("docx", "openpyxl", "matplotlib"):
     pkg_datas, pkg_binaries, pkg_hidden = collect_all(package)
     datas += pkg_datas
     binaries += pkg_binaries
     hiddenimports += pkg_hidden
+
+hiddenimports += ["matplotlib.backends.backend_tkagg"]
 
 a = Analysis(
     ["marketing_cv_ranker.py"],
