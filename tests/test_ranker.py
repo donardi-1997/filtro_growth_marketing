@@ -21,6 +21,7 @@ def test_modular_package_boundaries_and_compatibility_exports():
         "growth_ranker.experience",
         "growth_ranker.scoring",
         "growth_ranker.exporting",
+        "growth_ranker.dashboard",
         "growth_ranker.gui",
         "growth_ranker.cli",
     ]
@@ -33,6 +34,64 @@ def test_modular_package_boundaries_and_compatibility_exports():
     assert facade.score_candidate is modules["growth_ranker.scoring"].score_candidate
     assert facade.classify_score is modules["growth_ranker.scoring"].classify_score
     assert facade.run_analysis is modules["growth_ranker.exporting"].run_analysis
+
+
+def _dashboard_rows():
+    return [
+        {"Nombre": "Laura", "Archivo": "laura.pdf", "Ajuste %": 94, "Clasificación": "GRUPO 1 - Prioridad alta"},
+        {"Nombre": "Carlos", "Archivo": "carlos.docx", "Ajuste %": 85, "Clasificación": "GRUPO 2 - Entrevistar / validar"},
+        {"Nombre": "Andrea", "Archivo": "andrea.pdf", "Ajuste %": 76, "Clasificación": "GRUPO 3 - Reserva con potencial"},
+        {"Nombre": "Pedro", "Archivo": "pedro.pdf", "Ajuste %": 55, "Clasificación": "NO PRIORIZAR para Lead"},
+        {"Nombre": "Scan", "Archivo": "scan.pdf", "Ajuste %": 0, "Clasificación": "REVISIÓN MANUAL - sin texto extraíble"},
+        {"Nombre": "Broken", "Archivo": "broken.pdf", "Ajuste %": 0, "Clasificación": "ERROR"},
+    ]
+
+
+def test_dashboard_summary_separates_scored_candidates_from_manual_review():
+    from growth_ranker.dashboard import dashboard_summary
+
+    summary = dashboard_summary(_dashboard_rows())
+
+    assert summary == {
+        "total": 6,
+        "scored": 4,
+        "average_score": 77.5,
+        "group_1": 1,
+        "group_2": 1,
+        "group_3": 1,
+        "not_prioritized": 1,
+        "review": 2,
+    }
+
+
+def test_score_histogram_uses_fixed_twenty_point_buckets_and_ignores_unscored_rows():
+    from growth_ranker.dashboard import score_histogram
+
+    histogram = score_histogram(_dashboard_rows())
+
+    assert histogram == [
+        ("0-19", 0),
+        ("20-39", 0),
+        ("40-59", 1),
+        ("60-79", 1),
+        ("80-100", 2),
+    ]
+
+
+def test_dashboard_filters_by_group_and_search_text_case_insensitively():
+    from growth_ranker.dashboard import filter_rows
+
+    rows = _dashboard_rows()
+    assert [row["Nombre"] for row in filter_rows(rows, group="GRUPO 2")] == ["Carlos"]
+    assert [row["Nombre"] for row in filter_rows(rows, query="ANDREA")] == ["Andrea"]
+    assert [row["Nombre"] for row in filter_rows(rows, query="pdf", group="GRUPO 1")] == ["Laura"]
+
+
+def test_top_candidates_returns_highest_scored_reviewable_rows_only():
+    from growth_ranker.dashboard import top_candidates
+
+    rows = _dashboard_rows()
+    assert [row["Nombre"] for row in top_candidates(rows, limit=3)] == ["Laura", "Carlos", "Andrea"]
 
 
 def test_phrase_hits_uses_token_boundaries_for_short_keywords():
