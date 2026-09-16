@@ -22,6 +22,16 @@ def open_path(path: Path) -> None:
         subprocess.Popen(["xdg-open", str(path)])
 
 
+def mousewheel_scroll_units(delta: int) -> int:
+    """Normalize mouse-wheel delta into Tk canvas scroll units."""
+    if delta == 0:
+        return 0
+    units = int(delta / 120)
+    if units == 0:
+        units = 1 if delta > 0 else -1
+    return -units
+
+
 def launch_gui() -> None:
     import tkinter as tk
     from tkinter import filedialog, messagebox, ttk
@@ -377,12 +387,77 @@ def launch_gui() -> None:
     open_cv_btn = ttk.Button(right, text="Abrir CV", state="disabled", style="Secondary.TButton")
     open_cv_btn.pack(anchor="w", pady=(0, 8))
 
+    evidence_scroll_host = tk.Frame(right, bg=surface)
+    evidence_scroll_host.pack(fill="both", expand=True, pady=(2, 0))
+    evidence_scroll_host.grid_rowconfigure(0, weight=1)
+    evidence_scroll_host.grid_columnconfigure(0, weight=1)
+
+    evidence_canvas = tk.Canvas(
+        evidence_scroll_host,
+        bg=surface,
+        bd=0,
+        highlightthickness=0,
+        yscrollincrement=18,
+    )
+    evidence_scrollbar = ttk.Scrollbar(
+        evidence_scroll_host,
+        orient="vertical",
+        command=evidence_canvas.yview,
+    )
+    evidence_canvas.configure(yscrollcommand=evidence_scrollbar.set)
+    evidence_canvas.grid(row=0, column=0, sticky="nsew")
+    evidence_scrollbar.grid(row=0, column=1, sticky="ns", padx=(5, 0))
+
+    evidence_content = tk.Frame(evidence_canvas, bg=surface)
+    evidence_window = evidence_canvas.create_window((0, 0), window=evidence_content, anchor="nw")
+
+    def resize_evidence_content(_event=None) -> None:
+        evidence_canvas.configure(scrollregion=evidence_canvas.bbox("all"))
+
+    def resize_evidence_window(event) -> None:
+        evidence_canvas.itemconfigure(evidence_window, width=event.width)
+
+    evidence_content.bind("<Configure>", resize_evidence_content)
+    evidence_canvas.bind("<Configure>", resize_evidence_window)
+
+    def on_evidence_mousewheel(event) -> str:
+        units = mousewheel_scroll_units(int(getattr(event, "delta", 0) or 0))
+        if units:
+            evidence_canvas.yview_scroll(units, "units")
+        return "break"
+
+    def on_evidence_linux_scroll(event) -> str:
+        if getattr(event, "num", None) == 4:
+            evidence_canvas.yview_scroll(-1, "units")
+        elif getattr(event, "num", None) == 5:
+            evidence_canvas.yview_scroll(1, "units")
+        return "break"
+
+    def enable_evidence_mousewheel(_event=None) -> None:
+        root.bind_all("<MouseWheel>", on_evidence_mousewheel)
+        root.bind_all("<Button-4>", on_evidence_linux_scroll)
+        root.bind_all("<Button-5>", on_evidence_linux_scroll)
+
+    def disable_evidence_mousewheel(_event=None) -> None:
+        root.unbind_all("<MouseWheel>")
+        root.unbind_all("<Button-4>")
+        root.unbind_all("<Button-5>")
+
+    evidence_canvas.bind("<Enter>", enable_evidence_mousewheel)
+    evidence_canvas.bind("<Leave>", disable_evidence_mousewheel)
+    evidence_content.bind("<Enter>", enable_evidence_mousewheel)
+    evidence_content.bind("<Leave>", disable_evidence_mousewheel)
+
     def add_detail_box(title: str, height: int = 4) -> tk.Text:
-        tk.Label(right, text=title.upper(), bg=surface, fg=navy, font=("Segoe UI", 8, "bold")).pack(
-            anchor="w", pady=(6, 3)
-        )
+        tk.Label(
+            evidence_content,
+            text=title.upper(),
+            bg=surface,
+            fg=navy,
+            font=("Segoe UI", 8, "bold"),
+        ).pack(anchor="w", pady=(6, 3))
         box = tk.Text(
-            right,
+            evidence_content,
             height=height,
             wrap="word",
             relief="solid",
@@ -404,14 +479,14 @@ def launch_gui() -> None:
     breakdown_box = add_detail_box("Desglose", height=5)
 
     tk.Label(
-        right,
+        evidence_content,
         text="Soporte para revisión humana. La puntuación usa únicamente evidencia profesional del CV.",
         bg=surface,
         fg=muted,
         font=("Segoe UI", 8),
-        wraplength=300,
+        wraplength=285,
         justify="left",
-    ).pack(anchor="w", pady=(9, 0))
+    ).pack(anchor="w", pady=(9, 8))
 
     def set_text(box: tk.Text, value: str) -> None:
         box.configure(state="normal")
@@ -520,6 +595,7 @@ def launch_gui() -> None:
         set_text(strengths_box, str(row.get("Experiencia / fortalezas", "")))
         set_text(gaps_box, str(row.get("Brechas", "")))
         set_text(breakdown_box, str(row.get("Desglose", "")))
+        evidence_canvas.yview_moveto(0.0)
         open_cv_btn.configure(state="normal")
 
     def show_selected(_event=None) -> None:
