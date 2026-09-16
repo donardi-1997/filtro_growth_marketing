@@ -8,7 +8,7 @@ import sys
 import threading
 from pathlib import Path
 
-from .brand import BRAND, PALETTE, WINDOW_TITLE
+from .brand import BRAND, PALETTE, UI_TABS, WINDOW_TITLE
 from .dashboard import dashboard_summary, filter_rows, score_histogram, top_candidates
 from .exporting import run_analysis
 
@@ -43,7 +43,7 @@ def launch_gui() -> None:
     root = tk.Tk()
     root.title(WINDOW_TITLE)
     root.geometry("1460x920")
-    root.minsize(1160, 740)
+    root.minsize(1100, 700)
     root.configure(bg=bg)
 
     style = ttk.Style(root)
@@ -114,9 +114,12 @@ def launch_gui() -> None:
     search_var = tk.StringVar()
     group_var = tk.StringVar(value="Todos")
     last_excel: dict[str, Path | None] = {"path": None}
-    state: dict[str, object] = {"rows": [], "selected": None}
+    state: dict[str, object] = {"rows": [], "selected": None, "tree_rows": {}}
 
-    brand_bar = tk.Frame(root, bg=navy, padx=24, pady=15)
+    # ------------------------------------------------------------------
+    # ASIATI header
+    # ------------------------------------------------------------------
+    brand_bar = tk.Frame(root, bg=navy, padx=24, pady=14)
     brand_bar.pack(fill="x")
     brand_bar.grid_columnconfigure(1, weight=1)
 
@@ -136,7 +139,6 @@ def launch_gui() -> None:
         fg=teal,
         font=("Segoe UI", 10, "bold"),
     ).pack(side="left", pady=(8, 0))
-
     tk.Label(
         brand_bar,
         text=BRAND["tagline"].upper(),
@@ -144,8 +146,7 @@ def launch_gui() -> None:
         fg="#B9C8D2",
         font=("Segoe UI", 9, "bold"),
     ).grid(row=0, column=1, sticky="w", padx=(26, 0), pady=(8, 0))
-
-    role_pill = tk.Label(
+    tk.Label(
         brand_bar,
         text=BRAND["role"],
         bg=teal,
@@ -153,14 +154,13 @@ def launch_gui() -> None:
         font=("Segoe UI", 9, "bold"),
         padx=14,
         pady=7,
-    )
-    role_pill.grid(row=0, column=2, sticky="e")
+    ).grid(row=0, column=2, sticky="e")
 
-    outer = ttk.Frame(root, style="App.TFrame", padding=(20, 16, 20, 18))
+    outer = ttk.Frame(root, style="App.TFrame", padding=(20, 14, 20, 16))
     outer.pack(fill="both", expand=True)
 
     heading = ttk.Frame(outer, style="App.TFrame")
-    heading.pack(fill="x", pady=(0, 10))
+    heading.pack(fill="x", pady=(0, 9))
     ttk.Label(heading, text="Panel de evaluación de talento", style="Section.TLabel").pack(anchor="w")
     ttk.Label(
         heading,
@@ -168,12 +168,16 @@ def launch_gui() -> None:
         style="Subtitle.TLabel",
     ).pack(anchor="w", pady=(2, 0))
 
-    controls = tk.Frame(outer, bg=surface, highlightbackground=border, highlightthickness=1, padx=13, pady=11)
-    controls.pack(fill="x", pady=(0, 12))
+    # ------------------------------------------------------------------
+    # Folder / analysis controls
+    # ------------------------------------------------------------------
+    controls = tk.Frame(outer, bg=surface, highlightbackground=border, highlightthickness=1, padx=13, pady=10)
+    controls.pack(fill="x", pady=(0, 11))
     controls.grid_columnconfigure(0, weight=1)
 
-    folder_entry = ttk.Entry(controls, textvariable=selected_folder, font=("Segoe UI", 10))
-    folder_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+    ttk.Entry(controls, textvariable=selected_folder, font=("Segoe UI", 10)).grid(
+        row=0, column=0, sticky="ew", padx=(0, 8)
+    )
 
     def choose_folder() -> None:
         folder = filedialog.askdirectory(title="Selecciona la carpeta de hojas de vida")
@@ -186,23 +190,19 @@ def launch_gui() -> None:
         command=choose_folder,
         style="Secondary.TButton",
     ).grid(row=0, column=1, padx=(0, 8))
-
     analyze_btn = ttk.Button(controls, text="Analizar candidatos", style="Accent.TButton")
     analyze_btn.grid(row=0, column=2, padx=(0, 8))
-
     open_excel_btn = ttk.Button(controls, text="Abrir Excel", state="disabled", style="Secondary.TButton")
     open_excel_btn.grid(row=0, column=3, padx=(0, 8))
-
     open_folder_btn = ttk.Button(controls, text="Abrir carpeta", state="disabled", style="Secondary.TButton")
     open_folder_btn.grid(row=0, column=4)
 
-    progress_bar = ttk.Progressbar(
+    ttk.Progressbar(
         controls,
         maximum=100,
         variable=progress_value,
         style="Asiati.Horizontal.TProgressbar",
-    )
-    progress_bar.grid(row=1, column=0, columnspan=5, sticky="ew", pady=(10, 4))
+    ).grid(row=1, column=0, columnspan=5, sticky="ew", pady=(9, 4))
     ttk.Label(
         controls,
         textvariable=status,
@@ -211,8 +211,11 @@ def launch_gui() -> None:
         font=("Segoe UI", 9),
     ).grid(row=2, column=0, columnspan=5, sticky="w")
 
+    # ------------------------------------------------------------------
+    # KPI cards
+    # ------------------------------------------------------------------
     kpi_frame = ttk.Frame(outer, style="App.TFrame")
-    kpi_frame.pack(fill="x", pady=(0, 12))
+    kpi_frame.pack(fill="x", pady=(0, 11))
     for idx in range(5):
         kpi_frame.grid_columnconfigure(idx, weight=1, uniform="kpi")
 
@@ -223,7 +226,6 @@ def launch_gui() -> None:
         "group2": tk.StringVar(value="0"),
         "review": tk.StringVar(value="0"),
     }
-
     kpi_specs = [
         ("CANDIDATOS", "total", navy),
         ("PROMEDIO", "average", teal),
@@ -238,13 +240,16 @@ def launch_gui() -> None:
             highlightbackground=border,
             highlightthickness=1,
             padx=14,
-            pady=10,
+            pady=9,
         )
         card.grid(row=0, column=index, sticky="nsew", padx=(0 if index == 0 else 5, 0 if index == 4 else 5))
-        tk.Frame(card, bg=accent, height=3).pack(fill="x", pady=(0, 8))
+        tk.Frame(card, bg=accent, height=3).pack(fill="x", pady=(0, 7))
         ttk.Label(card, text=title, style="CardTitle.TLabel").pack(anchor="w")
         ttk.Label(card, textvariable=kpi_vars[key], style="CardValue.TLabel").pack(anchor="w", pady=(1, 0))
 
+    # ------------------------------------------------------------------
+    # Main area: notebook + fixed evidence panel
+    # ------------------------------------------------------------------
     body = ttk.Panedwindow(outer, orient="horizontal")
     body.pack(fill="both", expand=True)
 
@@ -254,27 +259,33 @@ def launch_gui() -> None:
     body.add(right, weight=1)
 
     notebook = ttk.Notebook(left)
-    notebook.pack(fill="x", pady=(0, 10))
-    summary_tab = ttk.Frame(notebook, style="Surface.TFrame")
-    top_tab = ttk.Frame(notebook, style="Surface.TFrame")
-    notebook.add(summary_tab, text="Resumen ejecutivo")
-    notebook.add(top_tab, text="Top 10")
+    notebook.pack(fill="both", expand=True)
 
-    summary_figure = Figure(figsize=(10, 2.8), dpi=100, facecolor=surface)
+    summary_tab = ttk.Frame(notebook, style="Surface.TFrame")
+    ranking_tab = ttk.Frame(notebook, style="Surface.TFrame")
+    top_tab = ttk.Frame(notebook, style="Surface.TFrame")
+    notebook.add(summary_tab, text=UI_TABS[0])
+    notebook.add(ranking_tab, text=UI_TABS[1])
+    notebook.add(top_tab, text=UI_TABS[2])
+
+    # ------------------------------------------------------------------
+    # Summary chart tab
+    # ------------------------------------------------------------------
+    summary_figure = Figure(figsize=(9.5, 5.0), dpi=100, facecolor=surface)
     group_ax = summary_figure.add_subplot(121)
     histogram_ax = summary_figure.add_subplot(122)
     summary_canvas = FigureCanvasTkAgg(summary_figure, master=summary_tab)
     summary_canvas.get_tk_widget().configure(bg=surface, highlightthickness=0)
-    summary_canvas.get_tk_widget().pack(fill="both", expand=True)
+    summary_canvas.get_tk_widget().pack(fill="both", expand=True, padx=8, pady=8)
 
-    top_figure = Figure(figsize=(10, 2.8), dpi=100, facecolor=surface)
-    top_ax = top_figure.add_subplot(111)
-    top_canvas = FigureCanvasTkAgg(top_figure, master=top_tab)
-    top_canvas.get_tk_widget().configure(bg=surface, highlightthickness=0)
-    top_canvas.get_tk_widget().pack(fill="both", expand=True)
+    # ------------------------------------------------------------------
+    # Ranking tab: filters + permanently visible/selectable table
+    # ------------------------------------------------------------------
+    ranking_tab.grid_rowconfigure(1, weight=1)
+    ranking_tab.grid_columnconfigure(0, weight=1)
 
-    filter_bar = tk.Frame(left, bg=surface, highlightbackground=border, highlightthickness=1, padx=10, pady=8)
-    filter_bar.pack(fill="x", pady=(0, 8))
+    filter_bar = tk.Frame(ranking_tab, bg=surface, padx=10, pady=9)
+    filter_bar.grid(row=0, column=0, sticky="ew")
     filter_bar.grid_columnconfigure(1, weight=1)
     ttk.Label(filter_bar, text="Buscar", background=surface, foreground=muted).grid(row=0, column=0, padx=(0, 6))
     ttk.Entry(filter_bar, textvariable=search_var).grid(row=0, column=1, sticky="ew", padx=(0, 10))
@@ -288,8 +299,8 @@ def launch_gui() -> None:
     )
     group_combo.grid(row=0, column=3)
 
-    table_frame = tk.Frame(left, bg=surface, highlightbackground=border, highlightthickness=1)
-    table_frame.pack(fill="both", expand=True)
+    table_frame = tk.Frame(ranking_tab, bg=surface, highlightbackground=border, highlightthickness=1)
+    table_frame.grid(row=1, column=0, sticky="nsew", padx=8, pady=(0, 8))
     table_frame.grid_rowconfigure(0, weight=1)
     table_frame.grid_columnconfigure(0, weight=1)
 
@@ -319,37 +330,38 @@ def launch_gui() -> None:
     tree.tag_configure("low", background=PALETTE["low_bg"])
     tree.tag_configure("review", background=PALETTE["review_bg"])
     tree.grid(row=0, column=0, sticky="nsew")
-
     yscroll = ttk.Scrollbar(table_frame, orient="vertical", command=tree.yview)
     yscroll.grid(row=0, column=1, sticky="ns")
     xscroll = ttk.Scrollbar(table_frame, orient="horizontal", command=tree.xview)
     xscroll.grid(row=1, column=0, sticky="ew")
     tree.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
 
-    tk.Label(
-        right,
-        text="EVIDENCIA DEL CV",
-        bg=surface,
-        fg=teal_dark,
-        font=("Segoe UI", 8, "bold"),
-    ).pack(anchor="w")
-    tk.Label(
-        right,
-        text="Detalle del candidato",
-        bg=surface,
-        fg=navy,
-        font=("Segoe UI", 15, "bold"),
-    ).pack(anchor="w", pady=(2, 0))
+    # ------------------------------------------------------------------
+    # Top 10 chart tab
+    # ------------------------------------------------------------------
+    top_figure = Figure(figsize=(9.5, 5.0), dpi=100, facecolor=surface)
+    top_ax = top_figure.add_subplot(111)
+    top_canvas = FigureCanvasTkAgg(top_figure, master=top_tab)
+    top_canvas.get_tk_widget().configure(bg=surface, highlightthickness=0)
+    top_canvas.get_tk_widget().pack(fill="both", expand=True, padx=8, pady=8)
+
+    # ------------------------------------------------------------------
+    # Candidate evidence panel
+    # ------------------------------------------------------------------
+    tk.Label(right, text="EVIDENCIA DEL CV", bg=surface, fg=teal_dark, font=("Segoe UI", 8, "bold")).pack(anchor="w")
+    tk.Label(right, text="Detalle del candidato", bg=surface, fg=navy, font=("Segoe UI", 15, "bold")).pack(
+        anchor="w", pady=(2, 0)
+    )
 
     detail_name = tk.StringVar(value="Selecciona un candidato")
-    detail_meta = tk.StringVar(value="")
+    detail_meta = tk.StringVar(value="Ve a 'Ranking de candidatos' y haz clic en una fila.")
     tk.Label(
         right,
         textvariable=detail_name,
         bg=surface,
         fg=text,
         font=("Segoe UI", 12, "bold"),
-        wraplength=285,
+        wraplength=300,
         justify="left",
     ).pack(anchor="w", pady=(10, 2))
     tk.Label(
@@ -358,20 +370,20 @@ def launch_gui() -> None:
         bg=surface,
         fg=muted,
         font=("Segoe UI", 9),
-        wraplength=285,
+        wraplength=300,
         justify="left",
-    ).pack(anchor="w", pady=(0, 10))
+    ).pack(anchor="w", pady=(0, 9))
 
     open_cv_btn = ttk.Button(right, text="Abrir CV", state="disabled", style="Secondary.TButton")
-    open_cv_btn.pack(anchor="w", pady=(0, 10))
+    open_cv_btn.pack(anchor="w", pady=(0, 8))
 
-    def add_detail_box(title: str) -> tk.Text:
+    def add_detail_box(title: str, height: int = 4) -> tk.Text:
         tk.Label(right, text=title.upper(), bg=surface, fg=navy, font=("Segoe UI", 8, "bold")).pack(
-            anchor="w", pady=(7, 4)
+            anchor="w", pady=(6, 3)
         )
         box = tk.Text(
             right,
-            height=5,
+            height=height,
             wrap="word",
             relief="solid",
             bd=1,
@@ -381,15 +393,15 @@ def launch_gui() -> None:
             highlightbackground=border,
             font=("Segoe UI", 9),
             padx=8,
-            pady=7,
+            pady=6,
         )
-        box.pack(fill="both", expand=True)
+        box.pack(fill="x")
         box.configure(state="disabled")
         return box
 
     strengths_box = add_detail_box("Fortalezas")
     gaps_box = add_detail_box("Brechas")
-    breakdown_box = add_detail_box("Desglose")
+    breakdown_box = add_detail_box("Desglose", height=5)
 
     tk.Label(
         right,
@@ -397,9 +409,9 @@ def launch_gui() -> None:
         bg=surface,
         fg=muted,
         font=("Segoe UI", 8),
-        wraplength=285,
+        wraplength=300,
         justify="left",
-    ).pack(anchor="w", pady=(10, 0))
+    ).pack(anchor="w", pady=(9, 0))
 
     def set_text(box: tk.Text, value: str) -> None:
         box.configure(state="normal")
@@ -465,11 +477,7 @@ def launch_gui() -> None:
             group_ax.text(value + 0.15, index, str(value), va="center", fontsize=8, color=text)
 
         histogram = score_histogram(rows)
-        histogram_ax.bar(
-            [label for label, _ in histogram],
-            [count for _, count in histogram],
-            color=teal,
-        )
+        histogram_ax.bar([label for label, _ in histogram], [count for _, count in histogram], color=teal)
         histogram_ax.set_ylim(bottom=0)
 
         top = top_candidates(rows, limit=10)
@@ -501,41 +509,7 @@ def launch_gui() -> None:
     def visible_rows() -> list[dict]:
         return filter_rows(state["rows"], query=search_var.get(), group=group_var.get())  # type: ignore[arg-type]
 
-    def refresh_table(*_args) -> None:
-        rows = visible_rows()
-        for item in tree.get_children():
-            tree.delete(item)
-        for rank, row in enumerate(rows, 1):
-            tree.insert(
-                "",
-                "end",
-                iid=f"row-{rank}",
-                tags=(row_tag(row),),
-                values=(
-                    rank,
-                    row.get("Nombre", ""),
-                    row.get("Ajuste %", 0),
-                    row.get("Años experiencia estimados", 0),
-                    row.get("Clasificación", ""),
-                    row.get("Archivo", ""),
-                ),
-            )
-        refresh_charts(rows)
-
-    def show_selected(_event=None) -> None:
-        selection = tree.selection()
-        if not selection:
-            return
-        values = tree.item(selection[0], "values")
-        if not values:
-            return
-        filename = str(values[5])
-        row = next(
-            (item for item in state["rows"] if str(item.get("Archivo", "")) == filename),  # type: ignore[union-attr]
-            None,
-        )
-        if not row:
-            return
+    def display_candidate(row: dict) -> None:
         state["selected"] = row
         detail_name.set(str(row.get("Nombre", "Candidato")))
         detail_meta.set(
@@ -548,6 +522,57 @@ def launch_gui() -> None:
         set_text(breakdown_box, str(row.get("Desglose", "")))
         open_cv_btn.configure(state="normal")
 
+    def show_selected(_event=None) -> None:
+        selection = tree.selection()
+        if not selection:
+            return
+        tree_rows = state.get("tree_rows")
+        if not isinstance(tree_rows, dict):
+            return
+        row = tree_rows.get(selection[0])
+        if isinstance(row, dict):
+            display_candidate(row)
+
+    def refresh_table(*_args, select_first: bool = False) -> None:
+        rows = visible_rows()
+        selected = state.get("selected")
+        selected_file = str(selected.get("Archivo", "")) if isinstance(selected, dict) else ""
+
+        for item in tree.get_children():
+            tree.delete(item)
+
+        tree_rows: dict[str, dict] = {}
+        selected_iid = ""
+        for rank, row in enumerate(rows, 1):
+            iid = f"row-{rank}"
+            tree_rows[iid] = row
+            tree.insert(
+                "",
+                "end",
+                iid=iid,
+                tags=(row_tag(row),),
+                values=(
+                    rank,
+                    row.get("Nombre", ""),
+                    row.get("Ajuste %", 0),
+                    row.get("Años experiencia estimados", 0),
+                    row.get("Clasificación", ""),
+                    row.get("Archivo", ""),
+                ),
+            )
+            if selected_file and str(row.get("Archivo", "")) == selected_file:
+                selected_iid = iid
+
+        state["tree_rows"] = tree_rows
+        refresh_charts(rows)
+
+        target_iid = selected_iid or (tree.get_children()[0] if select_first and tree.get_children() else "")
+        if target_iid:
+            tree.selection_set(target_iid)
+            tree.focus(target_iid)
+            tree.see(target_iid)
+            show_selected()
+
     def open_selected_cv() -> None:
         row = state.get("selected")
         folder_text = selected_folder.get().strip()
@@ -558,7 +583,12 @@ def launch_gui() -> None:
             else:
                 messagebox.showwarning(WINDOW_TITLE, "No se encontró el archivo original del candidato.")
 
+    def open_selected_cv_from_double_click(_event=None) -> None:
+        show_selected()
+        open_selected_cv()
+
     tree.bind("<<TreeviewSelect>>", show_selected)
+    tree.bind("<Double-1>", open_selected_cv_from_double_click)
     open_cv_btn.configure(command=open_selected_cv)
     search_var.trace_add("write", refresh_table)
     group_var.trace_add("write", refresh_table)
@@ -595,16 +625,11 @@ def launch_gui() -> None:
             state["selected"] = None
             last_excel["path"] = xlsx_path
             refresh_kpis(rows)
-            refresh_table()
-            detail_name.set("Selecciona un candidato")
-            detail_meta.set("")
-            set_text(strengths_box, "")
-            set_text(gaps_box, "")
-            set_text(breakdown_box, "")
-            open_cv_btn.configure(state="disabled")
+            refresh_table(select_first=True)
+            notebook.select(ranking_tab)
             status.set(
                 f"Listo: {len(rows)} hojas de vida procesadas. "
-                "Usa los filtros o selecciona un candidato para revisar la evidencia."
+                "Selecciona una fila del ranking para revisar la evidencia; doble clic abre el CV."
             )
             progress_value.set(100)
             open_excel_btn.configure(state="normal")
