@@ -22,6 +22,7 @@ def test_modular_package_boundaries_and_compatibility_exports():
         "growth_ranker.scoring",
         "growth_ranker.exporting",
         "growth_ranker.dashboard",
+        "growth_ranker.brand",
         "growth_ranker.gui",
         "growth_ranker.cli",
     ]
@@ -34,6 +35,22 @@ def test_modular_package_boundaries_and_compatibility_exports():
     assert facade.score_candidate is modules["growth_ranker.scoring"].score_candidate
     assert facade.classify_score is modules["growth_ranker.scoring"].classify_score
     assert facade.run_analysis is modules["growth_ranker.exporting"].run_analysis
+
+
+def test_asiati_brand_contract_is_centralized_and_complete():
+    from growth_ranker.brand import BRAND, PALETTE
+
+    assert BRAND == {
+        "company": "ASIATI",
+        "product": "Talent Intelligence",
+        "role": "Growth & Marketing Lead",
+        "tagline": "Método · Control · Visión global",
+    }
+    assert PALETTE["navy"].startswith("#")
+    assert PALETTE["teal"].startswith("#")
+    assert PALETTE["background"].startswith("#")
+    assert PALETTE["surface"] == "#FFFFFF"
+    assert len(set(PALETTE.values())) == len(PALETTE.values())
 
 
 def _dashboard_rows():
