@@ -53,6 +53,12 @@ def test_asiati_brand_contract_is_centralized_and_complete():
     assert len(set(PALETTE.values())) == len(PALETTE.values())
 
 
+def test_ui_tabs_keep_candidate_ranking_visible_and_selectable():
+    from growth_ranker.brand import UI_TABS
+
+    assert UI_TABS == ("Resumen ejecutivo", "Ranking de candidatos", "Top 10")
+
+
 def _dashboard_rows():
     return [
         {"Nombre": "Laura", "Archivo": "laura.pdf", "Ajuste %": 94, "Clasificación": "GRUPO 1 - Prioridad alta"},
