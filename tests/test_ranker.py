@@ -1,3 +1,4 @@
+import importlib
 import sys
 from pathlib import Path
 
@@ -10,6 +11,28 @@ from marketing_cv_ranker import (
     score_candidate,
     classify_score,
 )
+
+
+def test_modular_package_boundaries_and_compatibility_exports():
+    module_names = [
+        "growth_ranker.profile",
+        "growth_ranker.text",
+        "growth_ranker.documents",
+        "growth_ranker.experience",
+        "growth_ranker.scoring",
+        "growth_ranker.exporting",
+        "growth_ranker.gui",
+        "growth_ranker.cli",
+    ]
+    modules = {name: importlib.import_module(name) for name in module_names}
+
+    import marketing_cv_ranker as facade
+
+    assert facade.phrase_hits is modules["growth_ranker.text"].phrase_hits
+    assert facade.estimate_years_experience is modules["growth_ranker.experience"].estimate_years_experience
+    assert facade.score_candidate is modules["growth_ranker.scoring"].score_candidate
+    assert facade.classify_score is modules["growth_ranker.scoring"].classify_score
+    assert facade.run_analysis is modules["growth_ranker.exporting"].run_analysis
 
 
 def test_phrase_hits_uses_token_boundaries_for_short_keywords():
