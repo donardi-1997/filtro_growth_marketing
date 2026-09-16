@@ -154,6 +154,24 @@ def test_experience_estimation_merges_overlapping_jobs():
     assert 4.8 <= years <= 5.1
 
 
+def test_professional_criteria_restore_original_100_point_weights():
+    from growth_ranker.profile import PROFILE
+
+    weights = {key: cfg["peso"] for key, cfg in PROFILE["criterios"].items()}
+    assert weights == {
+        "estrategia_growth": 18,
+        "conexion_comercial": 15,
+        "presupuesto": 12,
+        "metricas_resultados": 15,
+        "campanas_activaciones_eventos": 12,
+        "digital_paid_media": 10,
+        "crm_automatizacion": 7,
+        "liderazgo": 7,
+        "sectores_deseables": 4,
+    }
+    assert sum(weights.values()) == 100
+
+
 def test_budget_keyword_alone_is_not_treated_as_strong_management_evidence():
     weak = "Trabajé siguiendo el presupuesto aprobado por la dirección."
     strong = "Administré presupuesto anual de COP 800 millones para paid media y optimicé la inversión."
@@ -162,15 +180,17 @@ def test_budget_keyword_alone_is_not_treated_as_strong_management_evidence():
     assert strong_result["details"]["presupuesto"] > weak_result["details"]["presupuesto"]
 
 
-def test_quantified_outcome_scores_more_than_bare_percentage():
+def test_quantified_outcome_bonus_is_small_and_contextual():
     bare = "Disponibilidad 100% y dominio de herramientas digitales."
     outcome = "Incrementé las ventas 35%, reduje el CAC 22% y alcancé ROAS 4.1x."
     bare_result = score_candidate(bare, years_override=6)
     outcome_result = score_candidate(outcome, years_override=6)
-    assert outcome_result["details"]["resultados_cuantitativos"] > bare_result["details"]["resultados_cuantitativos"]
+    assert bare_result["quantitative_bonus"] == 0
+    assert 0 < outcome_result["quantitative_bonus"] <= 4
+    assert outcome_result["score"] > bare_result["score"]
 
 
-def test_seniority_is_its_own_score_component_not_global_multiplier():
+def test_seniority_is_multiplier_not_an_additive_score_component():
     text = """
     Growth marketing, estrategia de marketing, generación de demanda, ventas B2B,
     pipeline, ROAS, CAC, campañas 360, Meta Ads, Google Ads, HubSpot,
@@ -178,10 +198,33 @@ def test_seniority_is_its_own_score_component_not_global_multiplier():
     """
     junior = score_candidate(text, years_override=3)
     senior = score_candidate(text, years_override=8)
-    assert junior["details"]["experiencia"] < senior["details"]["experiencia"]
-    for key in junior["details"]:
-        if key != "experiencia":
-            assert junior["details"][key] == senior["details"][key]
+
+    assert junior["experience_factor"] == 0.80
+    assert senior["experience_factor"] == 1.00
+    assert "experiencia" not in junior["details"]
+    assert "resultados_cuantitativos" not in junior["details"]
+    assert junior["details"] == senior["details"]
+    assert junior["score"] < senior["score"]
+
+
+def test_long_tenure_does_not_outscore_relevant_growth_evidence():
+    weak_long_tenure = """
+    EXPERIENCIA PROFESIONAL
+    Community Manager | Enero 2014 - Actualidad
+    Creación de publicaciones, programación de contenido y respuesta de mensajes en redes sociales.
+    """
+    relevant_profile = """
+    EXPERIENCIA PROFESIONAL
+    Growth Marketing Manager | Enero 2020 - Actualidad
+    Lideré estrategia de marketing, generación de demanda y posicionamiento.
+    Trabajé con ventas B2B, pipeline y conversión de leads.
+    Administré presupuesto de COP 500 millones en Meta Ads y Google Ads.
+    Implementé HubSpot CRM y campañas 360 con agencias y proveedores.
+    Incrementé ventas 35%, reduje CAC 20% y alcancé ROAS 4.0x en e-commerce.
+    """
+    weak = score_candidate(weak_long_tenure, years_override=12)
+    strong = score_candidate(relevant_profile, years_override=6)
+    assert strong["score"] > weak["score"] + 30
 
 
 def test_classification_thresholds_are_stable():
