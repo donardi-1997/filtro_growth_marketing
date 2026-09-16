@@ -49,29 +49,29 @@ def _contextual_quantified_results(text: str) -> list[str]:
 
 
 def _coverage_ratio(hit_count: int) -> float:
+    """Original fast-saturation curve, with boundary-safe phrase matching upstream."""
     if hit_count <= 0:
         return 0.0
     if hit_count == 1:
-        return 0.40
+        return 0.45
     if hit_count == 2:
         return 0.70
     if hit_count == 3:
-        return 0.90
+        return 0.88
     return 1.0
 
 
-def experience_points(years: float) -> float:
-    if years >= 8:
-        return 15.0
-    if years >= 6:
-        return 13.5
+def experience_factor(years: float) -> float:
+    """Original seniority adjustment: experience modulates evidence instead of adding points."""
+    if years >= PROFILE["experiencia_objetivo_ideal"]:
+        return 1.00
+    if years >= PROFILE["experiencia_objetivo_min"]:
+        return 0.97
     if years >= 4:
-        return 10.0
+        return 0.90
     if years >= 2:
-        return 6.0
-    if years > 0:
-        return 3.0
-    return 0.0
+        return 0.80
+    return 0.68
 
 
 def classify_score(score: float) -> str:
@@ -89,47 +89,58 @@ def score_candidate(text: str, *, years_override: float | None = None) -> dict:
     years = years_override if years_override is not None else estimate_years_experience(text)
     evidence: dict[str, list[str]] = {}
     details: dict[str, float] = {}
-    total = 0.0
+    professional_total = 0.0
 
+    # The professional criteria themselves add up to 100 points, matching the
+    # original profile. Seniority is applied afterwards as a multiplier.
     for criterion, cfg in PROFILE["criterios"].items():
         hits = phrase_hits(normalized, cfg["keywords"])
         evidence[criterion] = hits
         ratio = _coverage_ratio(len(hits))
+
+        # Keep the hardened ownership/context detection for budget evidence.
         strong_patterns = cfg.get("strong_patterns", [])
         strong_hits = [pattern for pattern in strong_patterns if re.search(pattern, normalized, re.IGNORECASE)]
         if strong_hits:
             ratio = max(ratio, 0.85 if len(strong_hits) == 1 else 1.0)
+
         points = round(cfg["peso"] * ratio, 1)
         details[criterion] = points
-        total += points
+        professional_total += points
 
-    exp_points = experience_points(years)
-    details["experiencia"] = exp_points
-    total += exp_points
+    factor = experience_factor(float(years))
 
+    # Preserve the original idea of a small quantitative confidence bonus,
+    # but require contextualized outcomes for percentages/ratios so that a
+    # bare value such as "100% disponibilidad" does not earn extra points.
     money = find_money_mentions(text)
     percentages = find_percentage_mentions(text)
     ratios = find_ratio_mentions(text)
     quantified = _contextual_quantified_results(text)
-    quantitative_points = 0.0
-    if money or percentages or ratios:
-        quantitative_points = 1.5
+    quantitative_bonus = 0.0
+    if money:
+        quantitative_bonus += 2.0
     if quantified:
-        quantitative_points = min(15.0, 3.0 + len(quantified) * 4.0)
-    details["resultados_cuantitativos"] = round(quantitative_points, 1)
-    total += quantitative_points
+        quantitative_bonus += 2.0
+    quantitative_bonus = min(4.0, quantitative_bonus)
 
-    raw = min(100.0, total)
+    raw = min(100.0, (professional_total * factor) + quantitative_bonus)
+
+    # Lead guardrails retained from the hardened version.
     if not evidence["estrategia_growth"] or not evidence["conexion_comercial"]:
         raw = min(raw, 74.0)
     if not evidence["presupuesto"] and not evidence["metricas_resultados"]:
         raw = min(raw, 79.0)
+
     score = round(raw, 1)
 
     return {
         "score": score,
         "recommendation": classify_score(score),
         "years": round(float(years), 1),
+        "professional_score": round(professional_total, 1),
+        "experience_factor": factor,
+        "quantitative_bonus": quantitative_bonus,
         "evidence": evidence,
         "details": details,
         "money": money,
@@ -143,6 +154,8 @@ def build_experience_summary(result: dict) -> str:
     parts: list[str] = []
     if result["years"]:
         parts.append(f"Experiencia estimada: {result['years']} años")
+    parts.append(f"Factor seniority: ×{result.get('experience_factor', 1.0):.2f}")
+
     labels = {
         "estrategia_growth": "estrategia/growth",
         "conexion_comercial": "marketing + comercial",
@@ -194,7 +207,10 @@ def build_score_breakdown(result: dict) -> str:
         "crm_automatizacion": "CRM",
         "liderazgo": "Liderazgo",
         "sectores_deseables": "Sector",
-        "experiencia": "Experiencia",
-        "resultados_cuantitativos": "Resultados",
     }
-    return " | ".join(f"{labels[key]} {value:g}" for key, value in result["details"].items())
+    parts = [f"{labels[key]} {value:g}" for key, value in result["details"].items()]
+    parts.append(f"Factor exp. ×{result.get('experience_factor', 1.0):.2f}")
+    bonus = float(result.get("quantitative_bonus", 0) or 0)
+    if bonus:
+        parts.append(f"Bonus cuantitativo +{bonus:g}")
+    return " | ".join(parts)
