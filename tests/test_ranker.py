@@ -59,6 +59,15 @@ def test_ui_tabs_keep_candidate_ranking_visible_and_selectable():
     assert UI_TABS == ("Resumen ejecutivo", "Ranking de candidatos", "Top 10")
 
 
+def test_evidence_panel_mousewheel_scroll_direction_is_normalized():
+    from growth_ranker.gui import mousewheel_scroll_units
+
+    assert mousewheel_scroll_units(120) == -1
+    assert mousewheel_scroll_units(-120) == 1
+    assert mousewheel_scroll_units(0) == 0
+    assert mousewheel_scroll_units(240) == -2
+
+
 def _dashboard_rows():
     return [
         {"Nombre": "Laura", "Archivo": "laura.pdf", "Ajuste %": 94, "Clasificación": "GRUPO 1 - Prioridad alta"},
