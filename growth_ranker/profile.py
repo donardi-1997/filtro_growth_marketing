@@ -8,7 +8,7 @@ PROFILE = {
     "experiencia_objetivo_ideal": 8,
     "criterios": {
         "estrategia_growth": {
-            "peso": 15,
+            "peso": 18,
             "keywords": [
                 "growth marketing", "growth", "estrategia de marketing",
                 "marketing estrategico", "planeacion estrategica", "go to market",
@@ -18,7 +18,7 @@ PROFILE = {
             ],
         },
         "conexion_comercial": {
-            "peso": 12,
+            "peso": 15,
             "keywords": [
                 "ventas", "comercial", "equipo comercial", "sales", "pipeline",
                 "funnel", "embudo", "lead", "leads", "conversion", "cierre",
@@ -26,7 +26,7 @@ PROFILE = {
             ],
         },
         "presupuesto": {
-            "peso": 9,
+            "peso": 12,
             "keywords": [
                 "presupuesto", "budget", "ad spend", "inversion",
                 "manejo de presupuesto", "gestion presupuestal", "paid media budget",
@@ -38,7 +38,7 @@ PROFILE = {
             ],
         },
         "metricas_resultados": {
-            "peso": 10,
+            "peso": 15,
             "keywords": [
                 "roi", "roas", "cac", "ltv", "cpl", "cpa", "ctr", "kpi", "kpis",
                 "tasa de conversion", "conversion rate", "ventas generadas",
@@ -46,7 +46,7 @@ PROFILE = {
             ],
         },
         "campanas_activaciones_eventos": {
-            "peso": 7,
+            "peso": 12,
             "keywords": [
                 "campanas 360", "campana 360", "atl", "btl", "activaciones",
                 "activacion de marca", "eventos", "lanzamientos", "ferias",
@@ -54,7 +54,7 @@ PROFILE = {
             ],
         },
         "digital_paid_media": {
-            "peso": 7,
+            "peso": 10,
             "keywords": [
                 "meta ads", "facebook ads", "google ads", "tiktok ads",
                 "linkedin ads", "paid media", "seo", "sem", "google analytics",
@@ -62,7 +62,7 @@ PROFILE = {
             ],
         },
         "crm_automatizacion": {
-            "peso": 4,
+            "peso": 7,
             "keywords": [
                 "hubspot", "salesforce", "crm", "automatizacion", "automation",
                 "mailchimp", "manychat", "zoho", "kommo", "bitrix24",
@@ -70,7 +70,7 @@ PROFILE = {
             ],
         },
         "liderazgo": {
-            "peso": 4,
+            "peso": 7,
             "keywords": [
                 "lidere equipo", "liderazgo", "coordine equipo", "coordinacion de equipos",
                 "marketing manager", "growth manager", "director de marketing",
@@ -79,7 +79,7 @@ PROFILE = {
             ],
         },
         "sectores_deseables": {
-            "peso": 2,
+            "peso": 4,
             "keywords": [
                 "e-commerce", "ecommerce", "retail", "logistica", "logistics",
                 "startup", "marketplace", "fulfillment", "comercio electronico",
